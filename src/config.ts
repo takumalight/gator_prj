@@ -14,6 +14,12 @@ export function setUser(username: string): void {
 }
 
 export function readConfig(): Config {
+    const p = getConfigFilePath();
+    if(!fs.existsSync(p)) {
+        const envUrl = process.env.DATABASE_URL || process.env.DB_URL;
+        if (!envUrl) throw new Error(`Config file ${p} not found and no DATABASE_URL set`);
+        return { dbUrl: envUrl };
+    }
     const config_content = fs.readFileSync(getConfigFilePath(), {encoding: "utf-8"});
     return validateConfig(config_content);
 }

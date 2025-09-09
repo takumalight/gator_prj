@@ -1,14 +1,13 @@
 import { exit } from "process";
 import { readConfig, setUser } from "./config";
 import { createUser, getUserByName, getUsers, resetUsersTable } from "./lib/db/queries/users";
-import { fetchFeed } from "./fecthFeed";
+import { fetchFeed } from "./fetchFeed";
+import { createFeed } from "./lib/db/queries/feeds";
+import { printFeed } from "./utils";
 
 export type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
 
 export async function handlerLogin(cmdName: string, ...args: string[]): Promise<void> {
-    // --- Begin Debug ---
-    // console.log("Running handlerLogin()...");
-    // --- End Debug ---
 
     // Ensure correct number of arguments
     if (args.length === 0) {
@@ -33,9 +32,6 @@ export async function handlerLogin(cmdName: string, ...args: string[]): Promise<
 }
 
 export async function handlerRegister(cmdName: string, ...args: string[]): Promise<void> {
-    // --- Begin Debug ---
-    // console.log(`Running handlerRegister()...`);
-    // --- End Debug ---
 
     // Ensure correct number of arguments
     if (args.length === 0) {
@@ -47,14 +43,8 @@ export async function handlerRegister(cmdName: string, ...args: string[]): Promi
     }
 
     const name_to_register = args[0];
-    // --- Begin Debug ---
-    // console.log(`Value of name_to_regsiter is "${name_to_register}"...`);
-    // --- End Debug ---
 
     // Check if name already exists
-    // --- Begin Debug ---
-    // console.log("handlerRegister is about to call getUserByName()...");
-    // --- End Debug ---
     const existing_user = await getUserByName(name_to_register);
     if (existing_user !== undefined) {
         console.error(`User with the name "${name_to_register}" already exists.`);
@@ -62,15 +52,7 @@ export async function handlerRegister(cmdName: string, ...args: string[]): Promi
     }
 
     // Create the user
-
-    // --- Begin Debug ---
-    // console.log("handlerRegister() is about to call createUser()...");
-    // --- End Debug ---
     await createUser(name_to_register);
-
-    // --- Begin Debug ---
-    // console.log("handlerRegister() is about to call setUser()...");
-    // --- End Debug ---
 
     setUser(name_to_register);
     console.log(`New user "${name_to_register}" registered and logged in.`);
@@ -102,4 +84,35 @@ export async function handlerAgg(): Promise <void> {
     } catch {
         console.error("Aggregate funciton failed.");
     }
+}
+
+export async function handlerAddFeed(cmdName: string, ...args: string[]): Promise<void> {
+    // Verify correct number of arguments
+    if (args.length < 2) {
+        console.error("Error: Name and URL for feed are both required.");
+        exit(1);
+    } else if (args.length > 2) {
+        console.error("Error: Too many arguments. Provide only the name (no spaces) and URL for the feed");
+        exit(1);
+    }
+
+    const feedName = args[0];
+    const feedUrl = args[1];
+
+    // Get current user
+    const config = readConfig();
+    const currentUser = config.currentUserName;
+    if(!currentUser) {
+        console.error("Must register and login as a user first.");
+        exit(1);
+    }
+    const retrievedUser = await getUserByName(currentUser);
+    if (!retrievedUser) {
+        console.error("Error: user not found.");
+        exit(1);
+    }
+
+    // Create and print the feed
+    const newFeed = await createFeed(feedName, feedUrl, retrievedUser.id);
+    printFeed(newFeed, retrievedUser);
 }
