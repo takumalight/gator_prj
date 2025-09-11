@@ -121,8 +121,8 @@ export async function handlerAddFeed(cmdName: string, ...args: string[]): Promis
 export async function handlerFeeds(): Promise<void> {
     const feeds = await getFeeds();
     if (feeds.length === 0) {
-        console.error("No feeds found.");
-        exit(1);
+        console.log("No feeds found.");
+        return;
     }
 
     for (const feed of feeds) {

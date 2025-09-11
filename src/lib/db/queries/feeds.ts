@@ -9,6 +9,8 @@ export async function createFeed(name: string, url: string, userId: string): Pro
 }
 
 export async function getFeeds() {
-    const result = db.select({name: feeds.name, url: feeds.url, username: users.name}).from(feeds).leftJoin(users, eq(feeds.user_id, users.id));
-    return result;
+    return await db
+        .select({name: feeds.name, url: feeds.url, username: users.name})
+        .from(feeds)
+        .innerJoin(users, eq(feeds.user_id, users.id));
 }
