@@ -2,8 +2,9 @@ import { exit } from "process";
 import { readConfig, setUser } from "./config";
 import { createUser, getUserByName, getUsers, resetUsersTable } from "./lib/db/queries/users";
 import { fetchFeed } from "./fetchFeed";
-import { createFeed } from "./lib/db/queries/feeds";
+import { createFeed, getFeeds } from "./lib/db/queries/feeds";
 import { printFeed } from "./utils";
+import { name } from "drizzle-orm";
 
 export type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
 
@@ -115,4 +116,16 @@ export async function handlerAddFeed(cmdName: string, ...args: string[]): Promis
     // Create and print the feed
     const newFeed = await createFeed(feedName, feedUrl, retrievedUser.id);
     printFeed(newFeed, retrievedUser);
+}
+
+export async function handlerFeeds(): Promise<void> {
+    const feeds = await getFeeds();
+    if (feeds.length === 0) {
+        console.error("No feeds found.");
+        exit(1);
+    }
+
+    for (const feed of feeds) {
+        console.log(`Feed Name: ${feed.name}\nFeed URL:  ${feed.url}\nUsername:  ${feed.username}\n`);
+    }
 }
