@@ -3,13 +3,21 @@ import { db } from "..";
 import { users } from "../schema";
 
 export async function createUser(name: string) {
-    const [result] = await db.insert(users).values({ name: name }).returning();
-    return result;
+    try {
+        const [result] = await db.insert(users).values({ name: name }).returning();
+        return result;
+    } catch (error) {
+        console.error("createUser encountered an error...");
+        throw error;
+    }
 }
 
 export async function getUserByName(name: string) {
     try {
-        const [result] = await db.select().from(users).where(eq(users.name, name));
+        const [result] = await db
+            .select()
+            .from(users)
+            .where(eq(users.name, name));
         return result;
     } catch (error) {
         console.error("getUserByName() encountered an error...");
@@ -18,10 +26,20 @@ export async function getUserByName(name: string) {
 }
 
 export async function resetUsersTable() {
-    await db.delete(users);
+    try {
+        await db.delete(users);
+    } catch (error) {
+        console.error("resetUsersTable() encountered an error...")
+        throw error;
+    }
 }
 
 export async function getUsers() {
-    const result = await db.select().from(users);
-    return result;
+    try {
+        const result = await db.select().from(users);
+        return result;
+    } catch (error) {
+        console.error("getUsers() encountered an error...");
+        throw error;
+    }
 }

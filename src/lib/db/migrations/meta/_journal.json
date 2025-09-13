@@ -15,6 +15,13 @@
       "when": 1757435377800,
       "tag": "0001_bouncy_kitty_pryde",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1757632823470,
+      "tag": "0002_orange_gambit",
+      "breakpoints": true
     }
   ]
 }

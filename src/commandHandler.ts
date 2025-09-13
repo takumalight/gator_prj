@@ -1,10 +1,10 @@
 import { exit } from "process";
-import { readConfig, setUser } from "./config";
+import { Config, readConfig, setUser } from "./config";
 import { createUser, getUserByName, getUsers, resetUsersTable } from "./lib/db/queries/users";
 import { fetchFeed } from "./fetchFeed";
-import { createFeed, getFeeds } from "./lib/db/queries/feeds";
-import { printFeed } from "./utils";
-import { name } from "drizzle-orm";
+import { createFeed, getFeedByUrl, getFeeds } from "./lib/db/queries/feeds";
+import { getCurrentUser, printFeed } from "./utils";
+import { createFeedFollow, getFeedFollowsForUser } from "./lib/db/queries/feedFollows";
 
 export type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
 
@@ -65,13 +65,13 @@ export async function handlerReset(): Promise <void> {
 }
 
 export async function handlerUsers(): Promise <void> {
-    const config = readConfig();
+    const config: Config = readConfig();
     const currentUser = config.currentUserName;
 
     const users = await getUsers();
     if (users.length === 0) {
-        console.error("No users found.");
-        exit(1);
+        console.log("No users found.");
+        return;
     }
 
     for (const user of users) {
@@ -100,22 +100,14 @@ export async function handlerAddFeed(cmdName: string, ...args: string[]): Promis
     const feedName = args[0];
     const feedUrl = args[1];
 
-    // Get current user
-    const config = readConfig();
-    const currentUser = config.currentUserName;
-    if(!currentUser) {
-        console.error("Must register and login as a user first.");
-        exit(1);
-    }
-    const retrievedUser = await getUserByName(currentUser);
-    if (!retrievedUser) {
-        console.error("Error: user not found.");
-        exit(1);
-    }
+    const currentUser = await getCurrentUser();
 
     // Create and print the feed
-    const newFeed = await createFeed(feedName, feedUrl, retrievedUser.id);
-    printFeed(newFeed, retrievedUser);
+    const newFeed = await createFeed(feedName, feedUrl, currentUser.id);
+    printFeed(newFeed, currentUser);
+
+    // Auto-follow feed
+    await handlerFollow("follow", newFeed.url);
 }
 
 export async function handlerFeeds(): Promise<void> {
@@ -127,5 +119,37 @@ export async function handlerFeeds(): Promise<void> {
 
     for (const feed of feeds) {
         console.log(`Feed Name: ${feed.name}\nFeed URL:  ${feed.url}\nUsername:  ${feed.username}\n`);
+    }
+}
+
+export async function handlerFollow(cmdName: string, ...args: string[]): Promise<void> {
+    if (args.length !== 1) {
+        console.error("Error: Please provide only a feed url.");
+        exit(1);
+    }
+    // Check that feed has been added first
+    const feedUrl = args[0];
+    const currentFeed = await getFeedByUrl(feedUrl);
+    if (!currentFeed) {
+        console.error("Error: Feed must be added before following.");
+        exit(1);
+    }
+    const currentUser = await getCurrentUser();
+
+    const result = await createFeedFollow(currentUser.id, currentFeed.id);
+    console.log(`User "${result.user_name}" is now following feed "${result.feed_name}".`);
+}
+
+export async function handlerFollowing(): Promise<void> {
+    const currentUser = await getCurrentUser();
+    const follows = await getFeedFollowsForUser(currentUser.id);
+    if (follows.length === 0) {
+        console.log(`User ${currentUser.name} is not following any feeds.`);
+        return;
+    }
+
+    console.log(`${currentUser.name} is currently following:`);
+    for (const row of follows) {
+        console.log(row.feed_name);
     }
 }

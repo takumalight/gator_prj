@@ -2,7 +2,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
-type Config = {
+export type Config = {
     dbUrl: string;
     currentUserName?: string;
 }
@@ -13,15 +13,10 @@ export function setUser(username: string): void {
     writeConfig(currentConfig);
 }
 
-export function readConfig(): Config {
-    const p = getConfigFilePath();
-    if(!fs.existsSync(p)) {
-        const envUrl = process.env.DATABASE_URL || process.env.DB_URL;
-        if (!envUrl) throw new Error(`Config file ${p} not found and no DATABASE_URL set`);
-        return { dbUrl: envUrl };
-    }
-    const config_content = fs.readFileSync(getConfigFilePath(), {encoding: "utf-8"});
-    return validateConfig(config_content);
+export function readConfig() {
+    const fullPath = getConfigFilePath();
+    const data = fs.readFileSync(fullPath, "utf-8");
+    return validateConfig(data);
 }
 
 // HELPER FUNCTIONS
