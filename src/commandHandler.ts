@@ -3,10 +3,27 @@ import { Config, readConfig, setUser } from "./config";
 import { createUser, getUserByName, getUsers, resetUsersTable } from "./lib/db/queries/users";
 import { fetchFeed } from "./fetchFeed";
 import { createFeed, getFeedByUrl, getFeeds } from "./lib/db/queries/feeds";
-import { getCurrentUser, printFeed } from "./utils";
+import { getCurrentUser, printFeed, User } from "./utils";
 import { createFeedFollow, getFeedFollowsForUser } from "./lib/db/queries/feedFollows";
 
-export type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
+export type CommandHandler = (
+    cmdName: string,
+    ...args: string[]
+) => Promise<void>;
+
+type UserCommandHandler = (
+    cmdName: string,
+    user: User,
+    ...args: string[]
+) => Promise<void>;
+type middlewareLoggedIn = (handler: UserCommandHandler) => CommandHandler;
+
+export function middlewareLoggedIn(handler: UserCommandHandler): CommandHandler {
+    return async (cmdName: string, ...args: string[]) => {
+        const currentUser = await getCurrentUser();
+        await handler(cmdName, currentUser, ...args);
+    }
+}
 
 export async function handlerLogin(cmdName: string, ...args: string[]): Promise<void> {
 
@@ -87,7 +104,7 @@ export async function handlerAgg(): Promise <void> {
     }
 }
 
-export async function handlerAddFeed(cmdName: string, ...args: string[]): Promise<void> {
+export async function handlerAddFeed(cmdName: string, currentUser:User, ...args: string[]): Promise<void> {
     // Verify correct number of arguments
     if (args.length < 2) {
         console.error("Error: Name and URL for feed are both required.");
@@ -100,14 +117,12 @@ export async function handlerAddFeed(cmdName: string, ...args: string[]): Promis
     const feedName = args[0];
     const feedUrl = args[1];
 
-    const currentUser = await getCurrentUser();
-
     // Create and print the feed
     const newFeed = await createFeed(feedName, feedUrl, currentUser.id);
     printFeed(newFeed, currentUser);
 
     // Auto-follow feed
-    await handlerFollow("follow", newFeed.url);
+    await handlerFollow("follow", currentUser, newFeed.url);
 }
 
 export async function handlerFeeds(): Promise<void> {
@@ -122,7 +137,7 @@ export async function handlerFeeds(): Promise<void> {
     }
 }
 
-export async function handlerFollow(cmdName: string, ...args: string[]): Promise<void> {
+export async function handlerFollow(cmdName: string, currentUser: User, ...args: string[]): Promise<void> {
     if (args.length !== 1) {
         console.error("Error: Please provide only a feed url.");
         exit(1);
@@ -134,14 +149,11 @@ export async function handlerFollow(cmdName: string, ...args: string[]): Promise
         console.error("Error: Feed must be added before following.");
         exit(1);
     }
-    const currentUser = await getCurrentUser();
-
     const result = await createFeedFollow(currentUser.id, currentFeed.id);
     console.log(`User "${result.user_name}" is now following feed "${result.feed_name}".`);
 }
 
-export async function handlerFollowing(): Promise<void> {
-    const currentUser = await getCurrentUser();
+export async function handlerFollowing(cmdName: string, currentUser: User): Promise<void> {
     const follows = await getFeedFollowsForUser(currentUser.id);
     if (follows.length === 0) {
         console.log(`User ${currentUser.name} is not following any feeds.`);
