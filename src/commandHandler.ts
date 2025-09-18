@@ -4,7 +4,7 @@ import { createUser, getUserByName, getUsers, resetUsersTable } from "./lib/db/q
 import { fetchFeed } from "./fetchFeed";
 import { createFeed, getFeedByUrl, getFeeds } from "./lib/db/queries/feeds";
 import { getCurrentUser, printFeed, User } from "./utils";
-import { createFeedFollow, getFeedFollowsForUser } from "./lib/db/queries/feedFollows";
+import { createFeedFollow, getFeedFollowsForUser, unfollowFeedForUser } from "./lib/db/queries/feedFollows";
 
 export type CommandHandler = (
     cmdName: string,
@@ -164,4 +164,16 @@ export async function handlerFollowing(cmdName: string, currentUser: User): Prom
     for (const row of follows) {
         console.log(row.feed_name);
     }
+}
+
+export async function handlerUnfollow(cmdName: string, currentUser: User, ...args: string[]): Promise<void> {
+    // Check for correct number of args
+    if (args.length !== 1) {
+        console.error("Error: Incorrect number of arguments.\nPlease provide one (1) feed URL.");
+        exit(1);
+    }
+
+    const feed = await getFeedByUrl(args[0]);
+    const result = await unfollowFeedForUser(currentUser.id, feed.id);
+    console.log(`Deleted Feed Follow ID ${result.id}`);
 }
