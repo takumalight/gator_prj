@@ -1,9 +1,8 @@
 import { exit } from "process";
 import { Config, readConfig, setUser } from "./config";
 import { createUser, getUserByName, getUsers, resetUsersTable } from "./lib/db/queries/users";
-import { fetchFeed } from "./fetchFeed";
 import { createFeed, getFeedByUrl, getFeeds } from "./lib/db/queries/feeds";
-import { getCurrentUser, printFeed, User } from "./utils";
+import { convertToMs, getCurrentUser, printFeed, scrapeFeeds, User } from "./utils";
 import { createFeedFollow, getFeedFollowsForUser, unfollowFeedForUser } from "./lib/db/queries/feedFollows";
 
 export type CommandHandler = (
@@ -96,11 +95,38 @@ export async function handlerUsers(): Promise <void> {
     }
 }
 
-export async function handlerAgg(): Promise <void> {
+export async function handlerAgg(cmdName: string, ...args: string[]): Promise <void> {
+    if (args.length !== 1) {
+        console.error("Error: Incorrect number of arguments.");
+        exit(1);
+    }
+
     try {
-        console.log(JSON.stringify(await fetchFeed("https://www.wagslane.dev/index.xml")));
+        const time_between_reqs = args[0];
+        const regex = /^(\d+)(ms|s|m|h)$/;
+        const match = time_between_reqs.match(regex);
+        if (match === null || match.length !== 3) {
+            console.error("Error: Invalid format. Please provide [##][ms|s|m|h]");
+            exit(1);
+        }
+
+        const msInterval = convertToMs(Number(match[1]), match[2]);
+        
+        console.log(`Running RSS scrape every ${time_between_reqs}`);
+        scrapeFeeds();
+        const interval = setInterval(() => {
+            scrapeFeeds();
+        }, msInterval);
+
+        await new Promise<void>((resolve) => {
+            process.on("SIGINT", () => {
+                console.log("\nShutting down feed aggregator...");
+                clearInterval(interval);
+                resolve();
+            });
+        });
     } catch {
-        console.error("Aggregate funciton failed.");
+        console.error("Aggregate function failed.");
     }
 }
 
@@ -133,7 +159,7 @@ export async function handlerFeeds(): Promise<void> {
     }
 
     for (const feed of feeds) {
-        console.log(`Feed Name: ${feed.name}\nFeed URL:  ${feed.url}\nUsername:  ${feed.username}\n`);
+        console.log(`Feed Name: ${feed.name}\nFeed URL:  ${feed.url}\nUsername:  ${feed.username}\nLast Fetched: ${feed.lastFetchedAt}\n`);
     }
 }
 

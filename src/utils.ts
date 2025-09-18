@@ -2,6 +2,8 @@ import { exit } from "process";
 import { feeds, users } from "./lib/db/schema";
 import { readConfig } from "./config";
 import { getUserByName } from "./lib/db/queries/users";
+import { getNextFeedToFetch, markFeedFetched } from "./lib/db/queries/feeds";
+import { fetchFeed } from "./fetchFeed";
 
 export type Feed = typeof feeds.$inferSelect;
 export type User = typeof users.$inferSelect;
@@ -34,4 +36,37 @@ export async function getCurrentUser() {
       exit(1);
   }
   return retrievedUser;
+}
+
+export async function scrapeFeeds() {
+  const nextFeed = await getNextFeedToFetch();
+  await markFeedFetched(nextFeed.id);
+  const feedData = await fetchFeed(nextFeed.url);
+  
+  console.log('==========')
+  console.log(feedData.channel.title);
+  console.log(feedData.channel.link);
+  console.log(feedData.channel.description);
+  /* for (const item of feedData.channel.item) {
+    console.log('----------');
+    console.log(item.title);
+    console.log(item.link);
+    console.log(item.pubDate);
+    console.log(item.description);
+  } */
+  console.log('==========');
+}
+
+export function convertToMs(count: number, interval: string) {
+  switch (interval) {
+    case 'h':
+      return count * 1000 * 60 * 60;
+    case 'm':
+      return count * 1000 * 60;
+    case 's':
+      return count * 1000;
+    case 'ms':
+    default:
+      return count;
+  }
 }
