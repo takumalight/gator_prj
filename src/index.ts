@@ -1,4 +1,4 @@
-import { handlerAddFeed, handlerAgg, handlerFeeds, handlerFollow, handlerFollowing, handlerLogin, handlerRegister, handlerReset, handlerUnfollow, handlerUsers, middlewareLoggedIn } from "./commandHandler";
+import { handlerAddFeed, handlerAgg, handlerBrowse, handlerFeeds, handlerFollow, handlerFollowing, handlerLogin, handlerRegister, handlerReset, handlerUnfollow, handlerUsers, middlewareLoggedIn } from "./commandHandler";
 import { CommandsRegistry, registerCommand, runCommand } from "./commandsRegistry";
 import { argv, exit } from "process";
 import { conn } from "./lib/db";
@@ -15,6 +15,7 @@ async function main() {
     registerCommand(commandsRegistry, "follow", middlewareLoggedIn(handlerFollow));
     registerCommand(commandsRegistry, "following", middlewareLoggedIn(handlerFollowing));
     registerCommand(commandsRegistry, "unfollow", middlewareLoggedIn(handlerUnfollow));
+    registerCommand(commandsRegistry, "browse", middlewareLoggedIn(handlerBrowse));
 
     const input = argv.slice(2);
     if (input.length === 0) {

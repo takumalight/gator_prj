@@ -4,6 +4,7 @@ import { createUser, getUserByName, getUsers, resetUsersTable } from "./lib/db/q
 import { createFeed, getFeedByUrl, getFeeds } from "./lib/db/queries/feeds";
 import { convertToMs, getCurrentUser, printFeed, scrapeFeeds, User } from "./utils";
 import { createFeedFollow, getFeedFollowsForUser, unfollowFeedForUser } from "./lib/db/queries/feedFollows";
+import { getPostsForUser } from "./lib/db/queries/posts";
 
 export type CommandHandler = (
     cmdName: string,
@@ -159,7 +160,7 @@ export async function handlerFeeds(): Promise<void> {
     }
 
     for (const feed of feeds) {
-        console.log(`Feed Name: ${feed.name}\nFeed URL:  ${feed.url}\nUsername:  ${feed.username}\nLast Fetched: ${feed.lastFetchedAt}\n`);
+        console.log(`Feed ID: ${feed.id}\nFeed Name: ${feed.name}\nFeed URL:  ${feed.url}\nUsername:  ${feed.username}\nLast Fetched: ${feed.lastFetchedAt}\n`);
     }
 }
 
@@ -202,4 +203,35 @@ export async function handlerUnfollow(cmdName: string, currentUser: User, ...arg
     const feed = await getFeedByUrl(args[0]);
     const result = await unfollowFeedForUser(currentUser.id, feed.id);
     console.log(`Deleted Feed Follow ID ${result.id}`);
+}
+
+export async function handlerBrowse(cmdName: string, currentUser: User, ...args: string[]): Promise<void> {
+    // Check the input
+    if (args.length > 1) {
+        console.error("Error: Too many arguments.");
+        exit(1);
+    }
+    let postLimit = 2;
+    if (args.length === 1) {
+        if (Number.isInteger(Number(args[0]))) {
+            postLimit = Number(args[0]);
+        } else {
+            console.error("Error: If providing a post count, please provide a whole number.")
+            exit(1);
+        }
+    }
+
+    // Retrieve and display
+    const retrievedPosts = await getPostsForUser(currentUser.id, postLimit);
+    if (retrievedPosts.length ===0) {
+        console.log("No posts found.");
+        return;
+    }
+    for (const post of retrievedPosts) {
+        console.log(`+ ------------------------------ +`);
+        console.log(`+ ${post.title}`);
+        console.log(`+ ${post.url}`);
+        console.log(`+ ${post.publishedAt}`);
+        console.log(`+ ${post.description}`);
+    }
 }

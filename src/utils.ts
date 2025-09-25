@@ -4,6 +4,7 @@ import { readConfig } from "./config";
 import { getUserByName } from "./lib/db/queries/users";
 import { getNextFeedToFetch, markFeedFetched } from "./lib/db/queries/feeds";
 import { fetchFeed } from "./fetchFeed";
+import { checkPostExists, createPost } from "./lib/db/queries/posts";
 
 export type Feed = typeof feeds.$inferSelect;
 export type User = typeof users.$inferSelect;
@@ -43,17 +44,17 @@ export async function scrapeFeeds() {
   await markFeedFetched(nextFeed.id);
   const feedData = await fetchFeed(nextFeed.url);
   
-  console.log('==========')
   console.log(feedData.channel.title);
   console.log(feedData.channel.link);
   console.log(feedData.channel.description);
-  /* for (const item of feedData.channel.item) {
-    console.log('----------');
-    console.log(item.title);
-    console.log(item.link);
-    console.log(item.pubDate);
-    console.log(item.description);
-  } */
+  for (const post of feedData.channel.item) {
+    if(await checkPostExists(post.link)) {
+      console.log(`${post.title} already stored. Continuing...`);
+      continue;
+    }
+    const result = await createPost(post, nextFeed.url);
+    console.log(`Saved Post ${result.title}`);
+  }
   console.log('==========');
 }
 

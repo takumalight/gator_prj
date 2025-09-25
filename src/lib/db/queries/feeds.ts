@@ -2,7 +2,6 @@ import { Feed } from "src/utils";
 import { db } from "..";
 import { feeds, users } from "../schema";
 import { eq, sql } from "drizzle-orm";
-import { exit } from "process";
 
 export async function createFeed(name: string, url: string, userId: string): Promise<Feed> {
     const [result] = await db
@@ -19,7 +18,13 @@ export async function createFeed(name: string, url: string, userId: string): Pro
 export async function getFeeds() {
     try {
         return await db
-            .select({name: feeds.name, url: feeds.url, username: users.name, lastFetchedAt: feeds.lastFetchedAt})
+            .select({
+                id: feeds.id,
+                name: feeds.name,
+                url: feeds.url,
+                username: users.name,
+                lastFetchedAt: feeds.lastFetchedAt
+            })
             .from(feeds)
             .innerJoin(users, eq(feeds.user_id, users.id));
     } catch (error) {
@@ -61,9 +66,6 @@ export async function getNextFeedToFetch(): Promise<Feed> {
             .from(feeds)
             .orderBy(sql`${feeds.lastFetchedAt} ASC NULLS FIRST`);
 
-        /* console.log("/////");
-        console.log(result);
-        console.log("/////"); */
         return result[0];
     } catch (error) {
         console.error("getNextFeedToFetch() encountered an error...");
